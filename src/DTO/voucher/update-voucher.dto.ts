@@ -1,4 +1,4 @@
-export class CreateVoucherDto {
+export class UpdateVoucherDto {
   Name: string;
   Description: string;
   StartDate: Date;

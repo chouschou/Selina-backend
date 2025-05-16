@@ -11,6 +11,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { AccountDeliveryModule } from './modules/account-delivery/account-delivery.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { AiModule } from './modules/AI/AI.module';
+import { Voucher } from './entities/voucher.entity';
+import { VoucherModule } from './modules/voucher/voucher.module';
+import { ShippingFee } from './entities/shipping_fee.entity';
+import { ShippingFeeModule } from './modules/shipping-fee/shipping-fee.module';
 
 @Module({
   imports: [
@@ -34,6 +38,8 @@ import { AiModule } from './modules/AI/AI.module';
     PassportModule,
     JwtModule,
     AiModule,
+    VoucherModule,
+    ShippingFeeModule,
   ],
 })
 export class AppModule {}

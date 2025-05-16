@@ -8,6 +8,7 @@ import {
   Req,
   ForbiddenException,
   NotFoundException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AccountDeliveryService } from './account-delivery.service';
 import { CreateAccountDeliveryDto } from 'src/DTO/account-delivery/create-account-delivery.dto';
@@ -48,7 +49,12 @@ export class AccountDeliveryController {
       throw new NotFoundException('Không tìm thấy bản ghi Account_Delivery');
     }
 
-    if (user.role === 'customer' && accountDelivery.Account.ID !== user.sub) {
+    console.log('user ====', user);
+
+    if (
+      user.role === 'customer' &&
+      accountDelivery.Account.ID !== user.userId
+    ) {
       throw new ForbiddenException('Bạn không được phép truy cập dữ liệu này');
     }
 
@@ -58,11 +64,12 @@ export class AccountDeliveryController {
   @Get('/by-account/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'customer', 'employee')
-  findByAccount(@Req() req, @Param('id') accountId: number) {
+  findByAccount(@Req() req, @Param('id', ParseIntPipe) accountId: number) {
     const user = req.user;
 
+    console.log('user acc====', user.userId, accountId);
     // Nếu là customer → chỉ cho truy cập chính họ
-    if (user.role === 'customer' && user.sub !== accountId) {
+    if (user.role === 'customer' && user.userId !== accountId) {
       throw new ForbiddenException(
         'Bạn không được phép truy cập tài khoản này',
       );
@@ -74,7 +81,10 @@ export class AccountDeliveryController {
   @Get('/by-address/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'customer', 'employee')
-  async findByAddress(@Req() req, @Param('id') addressId: number) {
+  async findByAddress(
+    @Req() req,
+    @Param('id', ParseIntPipe) addressId: number,
+  ) {
     const user = req.user;
 
     const accountDelivery =
@@ -84,8 +94,12 @@ export class AccountDeliveryController {
       throw new NotFoundException('Không tìm thấy địa chỉ');
     }
 
+    console.log('user ====', user);
     // Nếu là customer → chỉ truy cập nếu địa chỉ thuộc về họ
-    if (user.role === 'customer' && accountDelivery.Account.ID !== user.sub) {
+    if (
+      user.role === 'customer' &&
+      accountDelivery.Account.ID !== user.userId
+    ) {
       throw new ForbiddenException('Bạn không có quyền xem địa chỉ này');
     }
 

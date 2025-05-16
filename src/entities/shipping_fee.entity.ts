@@ -18,5 +18,5 @@ export class ShippingFee {
   Surcharge: number;
 
   @Column()
-  SurchargeUnit: string;
+  SurchargeUnit: string; //c đơn vị km
 }

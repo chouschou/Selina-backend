@@ -73,4 +73,12 @@ export class ProductController {
   getByCategory(@Param('category') category: string) {
     return this.productService.getProductsByCategory(category);
   }
+
+  @Post('filter-by-category')
+  filterListByCategory(
+    @Body('ids') ids: number[],
+    @Body('category') category: string,
+  ) {
+    return this.productService.filterByIdsAndCategory(ids, category);
+  }
 }

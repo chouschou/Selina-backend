@@ -6,7 +6,7 @@ import { Glass } from 'src/entities/glass.entity';
 import { GlassColor } from 'src/entities/glass_color.entity';
 import { Order } from 'src/entities/order.entity';
 import { OrderDetail } from 'src/entities/order_detail.entity';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { ImageService } from '../image/image.service';
 
 @Injectable()
@@ -211,5 +211,22 @@ export class ProductService {
     });
 
     return this.attachImagesToGlassColors(glasses);
+  }
+
+  async filterByIdsAndCategory(
+    ids: number[],
+    category: string,
+  ): Promise<Glass[]> {
+    const whereClause: FindOptionsWhere<Glass> = {
+      ID: In(ids),
+      Category: category,
+    };
+
+    const products: Glass[] = await this.glassRepo.find({
+      where: whereClause,
+      relations: ['GlassColors'],
+    });
+
+    return products;
   }
 }
