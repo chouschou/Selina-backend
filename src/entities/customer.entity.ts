@@ -31,6 +31,6 @@ export class Customer {
   Avatar: string;
 
   @OneToOne(() => Account, (account) => account.Customer)
-  @JoinColumn()
+  @JoinColumn({ name: 'Account_ID' })
   Account: Account;
 }

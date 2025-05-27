@@ -3,7 +3,7 @@ import { Customer } from './customer.entity';
 import { Store } from './store.entity';
 
 @Entity()
-export class Conservation {
+export class Conversation {
   @PrimaryGeneratedColumn()
   ID: number;
 

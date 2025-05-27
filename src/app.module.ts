@@ -15,6 +15,8 @@ import { Voucher } from './entities/voucher.entity';
 import { VoucherModule } from './modules/voucher/voucher.module';
 import { ShippingFee } from './entities/shipping_fee.entity';
 import { ShippingFeeModule } from './modules/shipping-fee/shipping-fee.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { UserInfoModule } from './modules/user/user-info.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { ShippingFeeModule } from './modules/shipping-fee/shipping-fee.module';
     AiModule,
     VoucherModule,
     ShippingFeeModule,
+    ChatModule,
+    UserInfoModule,
   ],
 })
 export class AppModule {}

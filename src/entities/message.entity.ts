@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Conservation } from './conservation.entity';
+import { Conversation } from './conversation.entity';
 
 @Entity()
 export class Message {
@@ -21,13 +21,16 @@ export class Message {
   @Column()
   IsSeen: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   SeenAt: Date;
 
-  @ManyToOne(() => Conservation)
+  @Column()
+  IsEdited: boolean;
+
+  @ManyToOne(() => Conversation)
   @JoinColumn({ name: 'Conversation_ID' })
-  Conversation: Conservation;
+  Conversation: Conversation;
 
   @Column()
-  Sender_ID: number;
+  Sender_ID: number; // là account ID
 }
