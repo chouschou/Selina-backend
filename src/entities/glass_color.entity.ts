@@ -25,5 +25,8 @@ export class GlassColor {
   @Column('decimal', { precision: 5, scale: 2 }) Discount: number;
 
   @Column('text')
+  ModelVirtualTryOn: string;
+
+  @Column('text')
   Image3DPath: string;
 }

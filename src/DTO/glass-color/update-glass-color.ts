@@ -33,5 +33,9 @@ export class UpdateGlassColorDto {
 
   @IsString()
   @IsNotEmpty()
+  ModelVirtualTryOn: string;
+
+  @IsString()
+  @IsNotEmpty()
   Image3DPath: string;
 }

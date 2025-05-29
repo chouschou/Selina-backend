@@ -17,17 +17,31 @@ export class ImageService {
     return this.imageRepo.save(image);
   }
 
-  // Lấy ảnh theo object_type + object_ID
+  // // Lấy ảnh theo object_type + object_ID
+  // async findImagesForObjects(
+  //   objectType: string,
+  //   objectIDs: number[],
+  // ): Promise<Image[]> {
+  //   return this.imageRepo.find({
+  //     where: {
+  //       object_type: objectType,
+  //       object_ID: In(objectIDs),
+  //     },
+  //   });
+  // }
   async findImagesForObjects(
-    objectType: string,
-    objectIDs: number[],
+    object_type: string,
+    ids: number[],
   ): Promise<Image[]> {
-    return this.imageRepo.find({
+    const images = await this.imageRepo.find({
       where: {
-        object_type: objectType,
-        object_ID: In(objectIDs),
+        object_type,
+        object_ID: In(ids),
       },
     });
+
+    // THAY ĐỔI: chỉ return mảng rỗng nếu không tìm thấy, KHÔNG throw lỗi
+    return images;
   }
 
   // Xoá ảnh theo object_type + object_ID
@@ -39,8 +53,11 @@ export class ImageService {
       where: { object_type: objectType, object_ID: objectID },
     });
 
+    // if (!images.length) {
+    //   throw new NotFoundException('No images found for the given object');
+    // }
     if (!images.length) {
-      throw new NotFoundException('No images found for the given object');
+      return; // Không có ảnh thì không làm gì cả
     }
 
     await this.imageRepo.remove(images);

@@ -4,7 +4,6 @@ import { CreateProductDto } from 'src/DTO/product/create-product.dto';
 import { UpdateProductDto } from 'src/DTO/product/update-product.dto';
 import { Glass } from 'src/entities/glass.entity';
 import { GlassColor } from 'src/entities/glass_color.entity';
-import { Order } from 'src/entities/order.entity';
 import { OrderDetail } from 'src/entities/order_detail.entity';
 import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { ImageService } from '../image/image.service';
@@ -21,7 +20,7 @@ export class ProductService {
     private readonly imageService: ImageService,
   ) {}
 
-  private async attachImagesToGlassColors(glasses: Glass[]): Promise<Glass[]> {
+  async attachImagesToGlassColors(glasses: Glass[]): Promise<Glass[]> {
     const allColors = glasses.flatMap((g) => g.GlassColors);
     const colorIDs = allColors.map((c) => c.ID);
 
@@ -68,12 +67,25 @@ export class ProductService {
     const glass = this.glassRepo.create(glassData);
     const savedGlass = await this.glassRepo.save(glass);
 
-    const colors = GlassColors.map((c) =>
-      this.colorRepo.create({ ...c, Glass: savedGlass }),
-    );
-    await this.colorRepo.save(colors);
+    for (const c of GlassColors) {
+      const { Images, ...colorData } = c;
 
-    return this.findOne(savedGlass.ID); // return with relations
+      const color = this.colorRepo.create({ ...colorData, Glass: savedGlass });
+      const savedColor = await this.colorRepo.save(color);
+
+      if (Images && Images.length > 0) {
+        const imageEntities = Images.map((imgPath) =>
+          this.imageService.createImage({
+            object_ID: savedColor.ID,
+            object_type: 'glass_color',
+            ImagePath: imgPath,
+          }),
+        );
+        await Promise.all(imageEntities);
+      }
+    }
+
+    return this.findOne(savedGlass.ID);
   }
 
   async update(
@@ -134,13 +146,48 @@ export class ProductService {
           );
         }
 
+        let savedColor: GlassColor;
+
+        //---xử lý ảnh----
         if (matched) {
           Object.assign(matched, colorDto);
-          await this.colorRepo.save(matched);
+          savedColor = await this.colorRepo.save(matched);
         } else {
           const newColor = this.colorRepo.create({ ...colorDto, Glass: glass });
           delete (newColor as any).ID;
-          await this.colorRepo.save(newColor);
+          savedColor = await this.colorRepo.save(newColor);
+        }
+
+        // Lấy ảnh cũ từ DB
+        const oldImages = await this.imageService.findImagesForObjects(
+          'glass_color',
+          [savedColor.ID],
+        );
+
+        // Chuyển ảnh về dạng string[] để dễ so sánh
+        const oldImagePaths = oldImages.map((img) => img.ImagePath).sort();
+        const newImagePaths = (colorDto.Images || []).slice().sort();
+
+        // So sánh 2 mảng ảnh
+        const isSame =
+          oldImagePaths.length === newImagePaths.length &&
+          oldImagePaths.every((path, index) => path === newImagePaths[index]);
+
+        if (!isSame) {
+          // Nếu ảnh thay đổi: xoá ảnh cũ + thêm mới
+          await this.imageService.deleteImagesByObject(
+            'glass_color',
+            savedColor.ID,
+          );
+
+          const newImages = newImagePaths.map((path) =>
+            this.imageService.createImage({
+              object_ID: savedColor.ID,
+              object_type: 'glass_color',
+              ImagePath: path,
+            }),
+          );
+          await Promise.all(newImages);
         }
       }
     }

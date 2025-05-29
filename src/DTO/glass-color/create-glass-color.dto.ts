@@ -19,5 +19,9 @@ export class CreateGlassColorDto {
 
   @IsString()
   @IsNotEmpty()
+  ModelVirtualTryOn: string;
+
+  @IsString()
+  @IsNotEmpty()
   Image3DPath: string;
 }

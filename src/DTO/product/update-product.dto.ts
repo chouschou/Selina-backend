@@ -1,6 +1,46 @@
-import { IsOptional, IsString, ValidateNested, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  ValidateNested,
+  IsArray,
+  IsNumber,
+  IsNotEmpty,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { UpdateGlassColorDto } from '../glass-color/update-glass-color';
+
+export class UpdateGlassColorDto {
+  @IsOptional()
+  @IsNumber()
+  ID?: number;
+
+  @IsOptional()
+  @IsString()
+  Color?: string;
+
+  @IsOptional()
+  @IsNumber()
+  Quantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  Price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  Discount?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  ModelVirtualTryOn: string;
+
+  @IsOptional()
+  @IsString()
+  Image3DPath?: string;
+
+  @IsOptional()
+  @IsArray()
+  Images?: string[];
+}
 
 export class UpdateProductDto {
   @IsOptional()

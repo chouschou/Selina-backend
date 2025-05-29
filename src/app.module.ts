@@ -11,12 +11,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { AccountDeliveryModule } from './modules/account-delivery/account-delivery.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { AiModule } from './modules/AI/AI.module';
-import { Voucher } from './entities/voucher.entity';
 import { VoucherModule } from './modules/voucher/voucher.module';
-import { ShippingFee } from './entities/shipping_fee.entity';
 import { ShippingFeeModule } from './modules/shipping-fee/shipping-fee.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { UserInfoModule } from './modules/user/user-info.module';
+import { RatingModule } from './modules/rating/rating.module';
 
 @Module({
   imports: [
@@ -44,6 +43,7 @@ import { UserInfoModule } from './modules/user/user-info.module';
     ShippingFeeModule,
     ChatModule,
     UserInfoModule,
+    RatingModule,
   ],
 })
 export class AppModule {}
