@@ -12,7 +12,7 @@ export class GlassColor {
   @PrimaryGeneratedColumn()
   ID: number;
 
-  @ManyToOne(() => Glass, (glass) => glass.GlassColors)
+  @ManyToOne(() => Glass, (glass) => glass.GlassColors, { eager: true })
   @JoinColumn({ name: 'Glass_ID' })
   Glass: Glass;
 

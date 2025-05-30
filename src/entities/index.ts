@@ -1,6 +1,7 @@
 import { Account } from './account.entity';
 import { AccountDelivery } from './account_delivery.entity';
 import { AccountVoucher } from './account_voucher.entity';
+import { Cart } from './cart.entity';
 import { Conversation } from './conversation.entity';
 import { Customer } from './customer.entity';
 import { DeliveryAddress } from './delivery_address.entity';
@@ -21,6 +22,7 @@ export const entities = [
   Account,
   AccountDelivery,
   AccountVoucher,
+  Cart,
   Conversation,
   Customer,
   DeliveryAddress,

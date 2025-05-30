@@ -16,6 +16,7 @@ import { ShippingFeeModule } from './modules/shipping-fee/shipping-fee.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { UserInfoModule } from './modules/user/user-info.module';
 import { RatingModule } from './modules/rating/rating.module';
+import { CartModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { RatingModule } from './modules/rating/rating.module';
     ChatModule,
     UserInfoModule,
     RatingModule,
+    CartModule,
   ],
 })
 export class AppModule {}
