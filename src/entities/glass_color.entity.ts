@@ -12,7 +12,10 @@ export class GlassColor {
   @PrimaryGeneratedColumn()
   ID: number;
 
-  @ManyToOne(() => Glass, (glass) => glass.GlassColors, { eager: true })
+  @Column()
+  Glass_ID: number;
+
+  @ManyToOne(() => Glass, (glass) => glass.GlassColors)
   @JoinColumn({ name: 'Glass_ID' })
   Glass: Glass;
 
@@ -24,9 +27,12 @@ export class GlassColor {
 
   @Column('decimal', { precision: 5, scale: 2 }) Discount: number;
 
-  @Column('text')
-  ModelVirtualTryOn: string;
+  @Column('text', { nullable: true })
+  ModelVirtualTryOn: string | null;
 
-  @Column('text')
-  Image3DPath: string;
+  @Column('text', { nullable: true })
+  Image3DPath: string | null;
+
+  @Column({ length: 50 })
+  Status: string;
 }

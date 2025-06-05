@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import * as bcrypt from 'bcryptjs';
@@ -49,7 +49,9 @@ export class AuthService {
       sub: user.ID,
       role: user.Role.Name,
     };
-    const access_token = await this.jwtService.signAsync(payload);
+    const access_token = await this.jwtService.signAsync(payload, {
+      expiresIn: '15m',
+    });
     const refresh_token = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
     });
@@ -66,17 +68,28 @@ export class AuthService {
     try {
       const decoded = await this.jwtService.verifyAsync<JwtPayload>(
         refreshToken,
-        {
-          secret: process.env.JWT_SECRET,
-        },
+        { secret: process.env.JWT_SECRET },
       );
 
-      const payload = { username: decoded.username, sub: decoded.sub };
-      const access_token = await this.jwtService.signAsync(payload);
+      const user = await this.findById(decoded.sub);
+      if (!user) throw new Error('User not found');
 
-      return { access_token };
+      const payload = {
+        username: user.Username,
+        sub: user.ID,
+        role: user.Role.Name,
+      };
+
+      const access_token = await this.jwtService.signAsync(payload, {
+        expiresIn: '15m',
+      });
+      const refresh_token = await this.jwtService.signAsync(payload, {
+        expiresIn: '7d',
+      });
+
+      return { access_token, refresh_token, user };
     } catch {
-      throw new Error('Invalid refresh token');
+      throw new UnauthorizedException('Invalid refresh token');
     }
   }
 

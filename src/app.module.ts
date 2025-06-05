@@ -17,6 +17,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { UserInfoModule } from './modules/user/user-info.module';
 import { RatingModule } from './modules/rating/rating.module';
 import { CartModule } from './modules/cart/cart.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { CartModule } from './modules/cart/cart.module';
     UserInfoModule,
     RatingModule,
     CartModule,
+    UploadModule,
   ],
 })
 export class AppModule {}

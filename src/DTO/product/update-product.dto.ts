@@ -37,6 +37,10 @@ export class UpdateGlassColorDto {
   @IsString()
   Image3DPath?: string;
 
+  @IsString()
+  @IsNotEmpty()
+  Status: string;
+
   @IsOptional()
   @IsArray()
   Images?: string[];

@@ -16,19 +16,6 @@ export class ImageService {
     const image = this.imageRepo.create(dto);
     return this.imageRepo.save(image);
   }
-
-  // // Lấy ảnh theo object_type + object_ID
-  // async findImagesForObjects(
-  //   objectType: string,
-  //   objectIDs: number[],
-  // ): Promise<Image[]> {
-  //   return this.imageRepo.find({
-  //     where: {
-  //       object_type: objectType,
-  //       object_ID: In(objectIDs),
-  //     },
-  //   });
-  // }
   async findImagesForObjects(
     object_type: string,
     ids: number[],

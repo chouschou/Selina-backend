@@ -29,10 +29,14 @@ class GlassColorDto {
   ModelVirtualTryOn: string;
 
   @IsString()
-  @IsNotEmpty()
-  Image3DPath: string;
+  // @IsNotEmpty()
+  Image3DPath?: string;
 
   Images?: string[];
+
+  @IsString()
+  @IsNotEmpty()
+  Status: string;
 }
 
 export class CreateProductDto {

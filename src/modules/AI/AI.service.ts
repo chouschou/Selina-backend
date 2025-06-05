@@ -3,7 +3,10 @@ import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import * as FormData from 'form-data';
 import { ReadStream } from 'fs';
-import { PredictResponse } from './predict-response.interface';
+import {
+  PredictResponse,
+  PredictEyeglassesShapeResponse,
+} from './predict-response.interface';
 
 @Injectable()
 export class AiService {
@@ -23,6 +26,23 @@ export class AiService {
       ),
     );
 
-    return response.data as PredictResponse;
+    return response.data;
+    // return response.data as PredictResponse;
+  }
+  async predictEyeglassesShape(
+    file: Express.Multer.File,
+  ): Promise<PredictEyeglassesShapeResponse> {
+    const form = new FormData();
+    form.append('file', file.buffer, file.originalname);
+
+    const response = await lastValueFrom(
+      this.httpService.post<PredictEyeglassesShapeResponse>(
+        'http://localhost:8000/predict-eyeglasses-shape',
+        form,
+        { headers: form.getHeaders() },
+      ),
+    );
+
+    return response.data;
   }
 }

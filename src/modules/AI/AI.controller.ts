@@ -16,4 +16,10 @@ export class AiController {
   async predict(@UploadedFile() file: Express.Multer.File) {
     return this.aiService.predictImage(file);
   }
+
+  @Post('predict-eyeglasses-shape')
+  @UseInterceptors(FileInterceptor('file'))
+  async predictEyeglasses(@UploadedFile() file: Express.Multer.File) {
+    return this.aiService.predictEyeglassesShape(file);
+  }
 }

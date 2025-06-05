@@ -10,11 +10,13 @@ import { AuthModule } from '../auth/auth.module';
 import { OrderDetail } from 'src/entities/order_detail.entity';
 import { ImageService } from '../image/image.service';
 import { Image } from 'src/entities/image.entity';
+import { S3Module } from 'src/shared/s3.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Glass, GlassColor, OrderDetail, Image]),
     AuthModule,
+    S3Module,
   ],
   controllers: [ProductController],
   providers: [ProductService, ImageService],

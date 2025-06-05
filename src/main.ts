@@ -10,9 +10,23 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
+import * as AWS from 'aws-sdk';
+import * as dotenv from 'dotenv';
+import * as express from 'express';
 
+dotenv.config();
+
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION || 'ap-southeast-1',
+});
 async function bootstrap() {
   const app: INestApplication = await NestFactory.create(AppModule);
+
+  // Thêm dòng này để parser hiểu các key dạng mảng/object
+  app.use(express.urlencoded({ extended: true }));
+
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   // Cấu hình ValidationPipe toàn cục với các tùy chọn transform và whitelist
