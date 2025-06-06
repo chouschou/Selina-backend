@@ -7,6 +7,7 @@ import {
   UseGuards,
   ForbiddenException,
   Req,
+  Patch,
 } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from 'src/DTO/auth/create-account.dto';
@@ -15,6 +16,10 @@ import { AuthGuard } from '@nestjs/passport';
 import { Role } from 'src/entities/role.entity';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import {
+  ChangeEmployeePasswordDto,
+  ChangeOwnPasswordDto,
+} from 'src/DTO/auth/change-password.dto';
 
 @Controller('accounts')
 export class AccountController {
@@ -44,5 +49,20 @@ export class AccountController {
       );
     }
     return this.accountService.findOne(+id);
+  }
+
+  @Patch('change-own-password')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'employee', 'customer')
+  changeOwnPassword(@Req() req, @Body() dto: ChangeOwnPasswordDto) {
+    const userId = req.user.userId;
+    return this.accountService.changeOwnPassword(userId, dto);
+  }
+
+  @Patch('change-employee-password')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner') // Chỉ chủ cửa hàng được phép
+  changeEmployeePassword(@Body() dto: ChangeEmployeePasswordDto) {
+    return this.accountService.changeEmployeePassword(dto);
   }
 }

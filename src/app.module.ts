@@ -18,6 +18,7 @@ import { UserInfoModule } from './modules/user/user-info.module';
 import { RatingModule } from './modules/rating/rating.module';
 import { CartModule } from './modules/cart/cart.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { UploadModule } from './modules/upload/upload.module';
     RatingModule,
     CartModule,
     UploadModule,
+    StatisticsModule,
   ],
 })
 export class AppModule {}
