@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { AccountDelivery } from './account_delivery.entity';
 import { OrderDetail } from './order_detail.entity';
+import { OrderStatus } from './order_status.entity';
 
 @Entity()
 export class Order {
@@ -32,4 +33,7 @@ export class Order {
 
   @OneToMany(() => OrderDetail, (detail) => detail.Order)
   OrderDetails: OrderDetail[];
+
+  @OneToMany(() => OrderStatus, (status) => status.Order, { cascade: true })
+  OrderStatuses: OrderStatus[];
 }

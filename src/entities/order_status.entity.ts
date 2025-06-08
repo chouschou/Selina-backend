@@ -4,8 +4,10 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { Order } from './order.entity';
+import { OrderRefund } from './order_refund.entity';
 
 @Entity()
 export class OrderStatus {
@@ -25,21 +27,9 @@ export class OrderStatus {
   @Column()
   CreateAt: Date;
 
-  @Column({ nullable: true })
-  IDAccountCancelReturn: number;
-
-  @Column({ nullable: true, type: 'text' })
-  Reason: string;
-
-  @Column({ nullable: true, length: 100 })
-  Bank: string;
-
-  @Column({ nullable: true, length: 100 })
-  AccountHolder: string;
-
-  @Column({ nullable: true, length: 50 })
-  AccountNumber: string;
-
-  @Column({ nullable: true })
-  RefundAt: Date;
+  // Mối quan hệ 1-1 với bảng hoàn tiền
+  @OneToOne(() => OrderRefund, (refund) => refund.OrderStatus, {
+    cascade: true,
+  })
+  Refund?: OrderRefund;
 }

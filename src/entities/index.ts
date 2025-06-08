@@ -11,6 +11,7 @@ import { Image } from './image.entity';
 import { Message } from './message.entity';
 import { Order } from './order.entity';
 import { OrderDetail } from './order_detail.entity';
+import { OrderRefund } from './order_refund.entity';
 import { OrderStatus } from './order_status.entity';
 import { Rating } from './rating.entity';
 import { Role } from './role.entity';
@@ -32,6 +33,7 @@ export const entities = [
   Message,
   Order,
   OrderDetail,
+  OrderRefund,
   OrderStatus,
   Rating,
   Role,
