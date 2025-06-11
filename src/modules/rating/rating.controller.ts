@@ -54,7 +54,9 @@ export class RatingController {
     return { canRate: can };
   }
   @Get('glass-color/:id')
-  async getByGlassColor(@Param('id', ParseIntPipe) id: number): Promise<any[]> {
+  async getByGlassColor(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ average: number; count: number; ratings: any[] }> {
     return this.service.getRatingsByGlassColor(id);
   }
 }

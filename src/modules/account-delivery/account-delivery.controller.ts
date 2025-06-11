@@ -9,6 +9,8 @@ import {
   ForbiddenException,
   NotFoundException,
   ParseIntPipe,
+  Put,
+  Delete,
 } from '@nestjs/common';
 import { AccountDeliveryService } from './account-delivery.service';
 import { CreateAccountDeliveryDto } from 'src/DTO/account-delivery/create-account-delivery.dto';
@@ -22,12 +24,39 @@ export class AccountDeliveryController {
     private readonly accountDeliveryService: AccountDeliveryService,
   ) {}
 
+  @Get(':id/check-used-in-order')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('customer')
+  checkUsedInOrder(@Param('id', ParseIntPipe) id: number) {
+    return this.accountDeliveryService.isUsedInOrder(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('customer')
   create(@Req() req: any, @Body() dto: CreateAccountDeliveryDto) {
-    const accountId = req.user.sub; // Lấy AccountID từ JWT
+    const accountId = req.user.userId; // Lấy AccountID từ JWT
+    console.log('req.user ===', req.user);
     return this.accountDeliveryService.create(accountId, dto);
+  }
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('customer')
+  update(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateAccountDeliveryDto,
+  ) {
+    const accountId = req.user.userId;
+    return this.accountDeliveryService.update(accountId, id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('customer')
+  delete(@Req() req: any, @Param('id') id: number) {
+    const accountId = req.user.userId;
+    return this.accountDeliveryService.delete(accountId, id);
   }
 
   @Get()

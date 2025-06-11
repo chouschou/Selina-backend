@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+  Column,
+} from 'typeorm';
 import { Account } from './account.entity';
 import { DeliveryAddress } from './delivery_address.entity';
 
@@ -14,4 +20,7 @@ export class AccountDelivery {
   @ManyToOne(() => DeliveryAddress)
   @JoinColumn({ name: 'Delivery_Address_ID' })
   DeliveryAddress: DeliveryAddress;
+
+  @Column({ name: 'IsDefault', type: 'boolean' })
+  IsDefault: boolean;
 }

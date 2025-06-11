@@ -1,4 +1,4 @@
-import { IsInt, IsString } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateAccountDeliveryDto {
   @IsString()
@@ -12,4 +12,8 @@ export class CreateAccountDeliveryDto {
 
   @IsString()
   PhoneNumber: string;
+
+  @IsOptional()
+  @IsBoolean()
+  IsDefault?: boolean;
 }

@@ -9,8 +9,11 @@ import { UpdateCartDto } from 'src/DTO/cart/update-cart.dto';
 import { Account } from 'src/entities/account.entity';
 import { Cart } from 'src/entities/cart.entity';
 import { GlassColor } from 'src/entities/glass_color.entity';
-import { Repository } from 'typeorm';
-
+import { Image } from 'src/entities/image.entity';
+import { DataSource, Repository } from 'typeorm';
+interface GlassColorWithImage extends GlassColor {
+  Image?: string;
+}
 @Injectable()
 export class CartService {
   constructor(
@@ -18,6 +21,7 @@ export class CartService {
     @InjectRepository(Account) private accountRepo: Repository<Account>,
     @InjectRepository(GlassColor)
     private glassColorRepo: Repository<GlassColor>,
+    private dataSource: DataSource,
   ) {}
 
   async addToCart(dto: CreateCartDto): Promise<Cart> {
@@ -71,8 +75,10 @@ export class CartService {
     await this.cartRepo.remove(cart);
   }
 
-  async findByAccountId(accountId: number): Promise<Cart[]> {
-    return this.cartRepo.find({
+  async findByAccountId(
+    accountId: number,
+  ): Promise<{ carts: Cart[]; totalItems: number; totalQuantity: number }> {
+    const carts = await this.cartRepo.find({
       where: { account: { ID: accountId } },
       relations: {
         glassColor: {
@@ -80,5 +86,32 @@ export class CartService {
         },
       },
     });
+
+    const totalQuantity = carts.reduce((sum, cart) => sum + cart.quantity, 0);
+    const totalItems = carts.length;
+
+    // Lấy ID các glassColor trong giỏ hàng
+    const glassColorIds = carts
+      .map((cart) => cart.glassColor?.ID)
+      .filter((id): id is number => typeof id === 'number');
+
+    // Lấy ảnh tương ứng từ bảng Image
+    const images = await this.dataSource
+      .getRepository(Image)
+      .createQueryBuilder('image')
+      .where('image.object_type = :type', { type: 'glass_color' })
+      .andWhere('image.object_ID IN (:...ids)', { ids: glassColorIds })
+      .getMany();
+
+    // Gán ảnh vào từng glassColor
+    for (const cart of carts) {
+      const gc = cart.glassColor as GlassColorWithImage;
+      const foundImage = images.find((img) => img.object_ID === gc.ID);
+      if (foundImage) {
+        gc.Image = foundImage.ImagePath;
+      }
+    }
+
+    return { carts, totalItems, totalQuantity };
   }
 }

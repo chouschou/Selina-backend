@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateRatingDto, UpdateRatingDto } from 'src/DTO/rating/rating.dto';
+import { Account } from 'src/entities/account.entity';
+import { AccountDelivery } from 'src/entities/account_delivery.entity';
+import { Customer } from 'src/entities/customer.entity';
 import { Image } from 'src/entities/image.entity';
+import { Order } from 'src/entities/order.entity';
 import { OrderDetail } from 'src/entities/order_detail.entity';
 import { OrderStatus } from 'src/entities/order_status.entity';
 import { Rating } from 'src/entities/rating.entity';
@@ -162,7 +166,11 @@ export class RatingService {
     return updated;
   }
 
-  async getRatingsByGlassColor(glassColorId: number): Promise<any[]> {
+  async getRatingsByGlassColor(glassColorId: number): Promise<{
+    average: number;
+    count: number;
+    ratings: any[];
+  }> {
     const ratings = await this.ratingRepo
       .createQueryBuilder('rating')
       .innerJoin(
@@ -170,6 +178,10 @@ export class RatingService {
         'orderDetail',
         'orderDetail.Rating_ID = rating.ID',
       )
+      .innerJoin(Order, 'order', 'order.ID = orderDetail.Order_ID')
+      .innerJoin(AccountDelivery, 'ad', 'ad.ID = order.Account_Delivery_ID')
+      .innerJoin(Account, 'account', 'account.ID = ad.Account_ID')
+      .leftJoin(Customer, 'customer', 'customer.Account_ID = account.ID')
       .leftJoin(
         Image,
         'image',
@@ -180,19 +192,20 @@ export class RatingService {
       )
       .where('orderDetail.Glass_Color_ID = :glassColorId', { glassColorId })
       .select([
-        'rating.ID',
-        'rating.Value',
-        'rating.Comment',
-        'rating.CreateAt',
-        'image.ID',
-        'image.ImagePath',
+        'rating.ID AS rating_ID',
+        'rating.Value AS rating_Value',
+        'rating.Comment AS rating_Comment',
+        'rating.CreateAt AS rating_CreateAt',
+        'image.ID AS image_ID',
+        'image.ImagePath AS image_ImagePath',
+        'customer.ID AS customer_ID',
+        'customer.Name AS customer_Name',
+        'customer.Avatar AS customer_Avatar',
       ])
-      .addSelect('image.object_ID', 'image_object_ID')
-      .addSelect('image.object_type', 'image_object_type')
       .getRawMany();
 
-    // Group by Rating ID
     const grouped = new Map<number, any>();
+    let totalValue = 0;
 
     for (const row of ratings) {
       const ratingId = row.rating_ID;
@@ -202,8 +215,14 @@ export class RatingService {
           Value: row.rating_Value,
           Comment: row.rating_Comment,
           CreateAt: row.rating_CreateAt,
+          Customer: {
+            ID: row.customer_ID,
+            Name: row.customer_Name,
+            Avatar: row.customer_Avatar,
+          },
           Images: [],
         });
+        totalValue += parseFloat(row.rating_Value);
       }
       if (row.image_ID) {
         grouped.get(ratingId).Images.push({
@@ -213,6 +232,14 @@ export class RatingService {
       }
     }
 
-    return Array.from(grouped.values());
+    const groupedArray = Array.from(grouped.values());
+    const count = groupedArray.length;
+    const average = count > 0 ? parseFloat((totalValue / count).toFixed(2)) : 0;
+
+    return {
+      average,
+      count,
+      ratings: groupedArray,
+    };
   }
 }
