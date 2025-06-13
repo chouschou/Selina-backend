@@ -8,14 +8,22 @@ import { AuthModule } from '../auth/auth.module';
 import { AccountDeliveryModule } from '../account-delivery/account-delivery.module';
 import { OrderStatus } from 'src/entities/order_status.entity';
 import { OrderRefund } from 'src/entities/order_refund.entity';
+import { VnpayService } from '../vnpay/vnpay.service';
+import { GlassColor } from 'src/entities/glass_color.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderDetail, OrderStatus, OrderRefund]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderDetail,
+      OrderStatus,
+      OrderRefund,
+      GlassColor,
+    ]),
     AccountDeliveryModule,
     AuthModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, VnpayService],
 })
 export class OrdersModule {}

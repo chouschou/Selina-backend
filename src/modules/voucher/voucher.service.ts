@@ -204,7 +204,7 @@ export class VoucherService implements OnModuleInit {
     const av = this.accountVoucherRepo.create({
       Account: account,
       Voucher: voucher,
-      Status: true,
+      Status: false, // Mặc định là chưa sử dụng
     });
 
     // Giảm RemainingQuantity

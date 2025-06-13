@@ -18,8 +18,8 @@ export class OrderStatus {
   @JoinColumn({ name: 'Order_ID' })
   Order: Order;
 
-  @Column({ length: 100 })
-  TransactionCode: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  TransactionCode: string | null;
 
   @Column({ length: 50 })
   Status: string;

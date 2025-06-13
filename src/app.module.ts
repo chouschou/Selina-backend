@@ -19,9 +19,15 @@ import { RatingModule } from './modules/rating/rating.module';
 import { CartModule } from './modules/cart/cart.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
+import { GeocodeModule } from './modules/geocode/geocode.module';
+import { ConfigModule } from '@nestjs/config';
+import { VnpayModule } from './modules/vnpay/vnpay.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, // dùng được ở mọi nơi
+    }),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -50,6 +56,8 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
     CartModule,
     UploadModule,
     StatisticsModule,
+    GeocodeModule,
+    VnpayModule,
   ],
 })
 export class AppModule {}

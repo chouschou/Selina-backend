@@ -1,4 +1,10 @@
-import { IsNumber, IsString, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsString,
+  IsArray,
+  ValidateNested,
+  IsOptional,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDetailDto } from './order-detail.dto';
 
@@ -22,4 +28,12 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderDetailDto)
   OrderDetails: OrderDetailDto[];
+
+  @IsOptional()
+  @IsNumber()
+  AccountVoucherId?: number;
+
+  @IsOptional()
+  @IsString()
+  TransactionCode?: string;
 }

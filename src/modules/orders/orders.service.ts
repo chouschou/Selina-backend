@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -13,6 +14,8 @@ import { UpdateOrderStatusDto } from 'src/DTO/orders/update-order-status.dto';
 import { OrderStatus } from 'src/entities/order_status.entity';
 import { OrderRefund } from 'src/entities/order_refund.entity';
 import { UpdateOrderRefundDto } from 'src/DTO/orders/update-order-refund.dto';
+import { AccountVoucher } from 'src/entities/account_voucher.entity';
+import { GlassColor } from 'src/entities/glass_color.entity';
 
 @Injectable()
 export class OrdersService {
@@ -27,7 +30,23 @@ export class OrdersService {
     private orderStatusRepo: Repository<OrderStatus>,
     @InjectRepository(OrderRefund)
     private orderRefundRepo: Repository<OrderRefund>,
+    @InjectRepository(GlassColor)
+    private glassColorRepo: Repository<GlassColor>,
   ) {}
+
+  async markOrderAsPaid(orderId: number, txnCode: string) {
+    const order = await this.orderRepo.findOne({ where: { ID: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    await this.orderStatusRepo.save({
+      Order: order,
+      TransactionCode: txnCode,
+      Status: 'paid',
+      CreateAt: new Date(),
+    });
+
+    await this.orderRepo.update(orderId, { Status: 'waiting' });
+  }
 
   async create(
     createOrderDto: CreateOrderDto,
@@ -39,10 +58,12 @@ export class OrdersService {
       ShippingFee,
       VoucherDiscount,
       Status,
+      TransactionCode,
       OrderDetails,
+      AccountVoucherId,
     } = createOrderDto;
-    console.log('account Id in service ', accountId);
-    // Tìm tất cả các AccountDelivery thuộc account hiện tại
+
+    // 1. Kiểm tra quyền sử dụng địa chỉ giao hàng
     const accountDelivery = await this.accountDeliveryRepo.findOne({
       where: {
         Account: { ID: accountId },
@@ -51,38 +72,83 @@ export class OrdersService {
       relations: ['Account', 'DeliveryAddress'],
     });
 
-    // Nếu không tìm thấy, nghĩa là địa chỉ không thuộc tài khoản → báo lỗi
     if (!accountDelivery) {
       throw new ForbiddenException(
         'Bạn không có quyền sử dụng địa chỉ giao hàng này.',
       );
     }
 
-    // Tạo order
-    const order = this.orderRepo.create({
-      AccountDelivery: accountDelivery,
-      Total,
-      ShippingFee,
-      VoucherDiscount,
-      Status,
+    // 2. Kiểm tra tồn kho trước khi tạo đơn
+    for (const detail of OrderDetails) {
+      const glassColor = await this.glassColorRepo.findOne({
+        where: { ID: detail.GlassColorId },
+      });
+
+      if (!glassColor) {
+        throw new NotFoundException(
+          `Sản phẩm GlassColor ID ${detail.GlassColorId} không tồn tại.`,
+        );
+      }
+
+      if (glassColor.Quantity < detail.Quantity) {
+        throw new BadRequestException(
+          `Sản phẩm GlassColor ID ${detail.GlassColorId} không đủ số lượng (hiện còn ${glassColor.Quantity}).`,
+        );
+      }
+    }
+
+    // 3. Bắt đầu transaction
+    return await this.orderRepo.manager.transaction(async (manager) => {
+      // 3.1. Tạo đơn hàng
+      const order = this.orderRepo.create({
+        AccountDelivery: accountDelivery,
+        Total,
+        ShippingFee,
+        VoucherDiscount,
+        Status,
+      });
+      const savedOrder = await manager.save(order);
+
+      // 3.2. Tạo chi tiết đơn hàng
+      const details = OrderDetails.map((detail) =>
+        this.orderDetailRepo.create({
+          Order: savedOrder,
+          GlassColor: { ID: detail.GlassColorId },
+          Quantity: detail.Quantity,
+          Price: detail.Price,
+          Discount: detail.Discount,
+        }),
+      );
+      await manager.save(details);
+
+      // 3.3. Trừ số lượng tồn kho của GlassColor
+      for (const detail of OrderDetails) {
+        await manager.decrement(
+          GlassColor,
+          { ID: detail.GlassColorId },
+          'Quantity',
+          detail.Quantity,
+        );
+      }
+
+      // 3.4. Tạo OrderStatus
+      const orderStatus = this.orderStatusRepo.create({
+        Order: { ID: savedOrder.ID },
+        TransactionCode: TransactionCode ?? undefined,
+        Status,
+        CreateAt: new Date(),
+      });
+      await manager.save(orderStatus);
+
+      // 3.5. Đánh dấu voucher đã sử dụng (nếu có)
+      if (AccountVoucherId) {
+        await manager.update(AccountVoucher, AccountVoucherId, {
+          Status: true,
+        });
+      }
+
+      return savedOrder;
     });
-
-    const savedOrder = await this.orderRepo.save(order);
-
-    // Tạo order details
-    const details = OrderDetails.map((detail) =>
-      this.orderDetailRepo.create({
-        Order: savedOrder,
-        GlassColor: { ID: detail.GlassColorId },
-        Quantity: detail.Quantity,
-        Price: detail.Price,
-        Discount: detail.Discount,
-      }),
-    );
-
-    await this.orderDetailRepo.save(details);
-
-    return savedOrder;
   }
 
   async findAll(): Promise<
