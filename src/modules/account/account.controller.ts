@@ -43,7 +43,7 @@ export class AccountController {
 
     console.log('user acc====', user.userId, id);
     // Nếu là customer → chỉ cho truy cập chính họ
-    if (user.role === 'customer' && user.userId !== id) {
+    if (user.role === 'customer' && user.userId !== parseInt(id)) {
       throw new ForbiddenException(
         'Bạn không được phép truy cập tài khoản này',
       );

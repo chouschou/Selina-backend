@@ -13,6 +13,7 @@ import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { ImageService } from '../image/image.service';
 import { GlassColorDto } from 'src/DTO/product/glass-color.dto';
 import { S3Service } from 'src/shared/s3.service';
+import { processModelImage } from './processImageBeforeUpload';
 
 @Injectable()
 export class ProductService {
@@ -51,9 +52,23 @@ export class ProductService {
         (f) => f.fieldname === `${prefix}.Images`,
       );
 
-      const ModelVirtualTryOnUrl = modelFile
-        ? await this.uploadImageVirtualToS3(modelFile)
-        : null;
+      // const ModelVirtualTryOnUrl = modelFile
+      //   ? await this.uploadImageVirtualToS3(modelFile)
+      //   : null;
+
+      let ModelVirtualTryOnUrl: string | null = null;
+
+      if (modelFile) {
+        const processedBuffer = await processModelImage(modelFile.buffer);
+
+        const processedFile: Express.Multer.File = {
+          ...modelFile,
+          buffer: processedBuffer,
+        };
+
+        ModelVirtualTryOnUrl = await this.uploadImageVirtualToS3(processedFile);
+      }
+
       const Image3DPathUrl = image3DFile
         ? await this.uploadModelToS3(image3DFile)
         : null;
@@ -266,7 +281,15 @@ export class ProductService {
       // Handle ModelVirtualTryOn
       if (modelFile) {
         const oldUrl = matchedColor.ModelVirtualTryOn || '';
-        const newUrl = await this.uploadImageVirtualToS3(modelFile);
+        // const newUrl = await this.uploadImageVirtualToS3(modelFile);
+        const processedBuffer = await processModelImage(modelFile.buffer);
+
+        const processedModelFile: Express.Multer.File = {
+          ...modelFile,
+          buffer: processedBuffer,
+        };
+
+        const newUrl = await this.uploadImageVirtualToS3(processedModelFile);
 
         if (oldUrl && oldUrl !== newUrl) {
           await this.s3Service.deleteFileFromS3(oldUrl);

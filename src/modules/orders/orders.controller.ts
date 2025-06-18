@@ -129,6 +129,13 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
+  @Get('by-account/:accountId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('customer', 'employee', 'owner')
+  getOrdersByAccount(@Param('accountId', ParseIntPipe) accountId: number) {
+    return this.ordersService.findByAccountId(accountId);
+  }
+
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('employee', 'owner', 'customer')

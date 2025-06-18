@@ -60,7 +60,7 @@ export class AccountService {
   async findOne(id: number): Promise<Account> {
     const account = await this.accountRepo.findOne({
       where: { ID: id },
-      relations: ['Role'],
+      relations: ['Role', 'Customer'],
     });
 
     if (!account) {

@@ -70,7 +70,7 @@ export class ProductController {
     return this.productService.updateWithFiles(id, body, files);
   }
 
-  @Post('by-shapes')
+  @Post('all/by-shapes')
   getByShapes(@Body('shapes') shapes: string[]) {
     return this.productService.findByShapes(shapes);
   }

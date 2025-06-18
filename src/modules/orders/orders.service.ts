@@ -231,6 +231,33 @@ export class OrdersService {
     return order;
   }
 
+  async findByAccountId(accountId: number): Promise<Order[]> {
+    const orders = await this.orderRepo.find({
+      where: {
+        AccountDelivery: {
+          Account: {
+            ID: accountId,
+          },
+        },
+      },
+      relations: [
+        'AccountDelivery',
+        'AccountDelivery.Account',
+        'AccountDelivery.DeliveryAddress',
+        'OrderDetails',
+        'OrderDetails.GlassColor.Glass',
+        'OrderDetails.GlassColor',
+        'OrderStatuses',
+        'OrderStatuses.Refund',
+      ],
+      order: {
+        ID: 'DESC',
+      },
+    });
+
+    return orders;
+  }
+
   async updateStatus(
     orderId: number,
     dto: UpdateOrderStatusDto,
