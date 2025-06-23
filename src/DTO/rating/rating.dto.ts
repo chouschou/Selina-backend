@@ -1,6 +1,6 @@
 export class CreateRatingDto {
   Value: number;
-  Comment: string;
+  Comment?: string;
   ImagePaths?: string[];
 }
 

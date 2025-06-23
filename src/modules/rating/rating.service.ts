@@ -14,6 +14,7 @@ import { Order } from 'src/entities/order.entity';
 import { OrderDetail } from 'src/entities/order_detail.entity';
 import { OrderStatus } from 'src/entities/order_status.entity';
 import { Rating } from 'src/entities/rating.entity';
+import { S3Service } from 'src/shared/s3.service';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -24,8 +25,27 @@ export class RatingService {
     private orderDetailRepo: Repository<OrderDetail>,
     @InjectRepository(OrderStatus)
     private orderStatusRepo: Repository<OrderStatus>,
-    @InjectRepository(Image) private imageRepo: Repository<Image>,
+    private readonly s3Service: S3Service,
+    @InjectRepository(Image)
+    private readonly imageRepo: Repository<Image>,
   ) {}
+
+  async getRatingById(id: number) {
+    const rating = await this.ratingRepo.findOne({
+      where: { ID: id },
+    });
+
+    if (!rating) throw new NotFoundException('Không tìm thấy đánh giá');
+
+    const images = await this.imageRepo.find({
+      where: { object_ID: id, object_type: 'rating' },
+    });
+
+    return {
+      ...rating,
+      Images: images,
+    };
+  }
 
   async canRate(orderDetailId: number, userId: number): Promise<boolean> {
     const orderDetail = await this.orderDetailRepo.findOne({
@@ -59,45 +79,57 @@ export class RatingService {
     orderDetailId: number,
     dto: CreateRatingDto,
     userId: number,
+    imageFiles: Express.Multer.File[],
   ) {
     const can = await this.canRate(orderDetailId, userId);
-    if (!can)
-      throw new BadRequestException('Đơn hàng không đủ điều kiện đánh giá');
+    if (!can) throw new BadRequestException('Không thể đánh giá');
 
     const orderDetail = await this.orderDetailRepo.findOne({
       where: { ID: orderDetailId },
       relations: ['Rating'],
     });
-
     if (!orderDetail) throw new NotFoundException('Không tìm thấy OrderDetail');
-
     if (orderDetail.Rating) throw new BadRequestException('Đã có đánh giá');
 
+    // Tạo đánh giá mới
     const rating = this.ratingRepo.create({
       Value: dto.Value,
       Comment: dto.Comment,
       CreateAt: new Date(),
     });
-    const saved = await this.ratingRepo.save(rating);
+    const savedRating = await this.ratingRepo.save(rating);
 
-    orderDetail.Rating = saved;
+    orderDetail.Rating = savedRating;
     await this.orderDetailRepo.save(orderDetail);
 
-    if (dto.ImagePaths?.length) {
-      const images = dto.ImagePaths.map((path) =>
+    // Xử lý ảnh nếu có
+    if (imageFiles?.length) {
+      const imageUrls = await Promise.all(
+        imageFiles.map((f) =>
+          this.s3Service.uploadFile(f.buffer, f.originalname, 'ratings'),
+        ),
+      );
+
+      const imageEntities = imageUrls.map((url) =>
         this.imageRepo.create({
-          object_ID: saved.ID,
+          object_ID: savedRating.ID,
           object_type: 'rating',
-          ImagePath: path,
+          ImagePath: url,
         }),
       );
-      await this.imageRepo.save(images);
+
+      await this.imageRepo.save(imageEntities);
     }
 
-    return saved;
+    return savedRating;
   }
 
-  async updateRating(ratingId: number, dto: UpdateRatingDto, userId: number) {
+  async updateRating(
+    ratingId: number,
+    dto: UpdateRatingDto,
+    userId: number,
+    imageFiles: Express.Multer.File[],
+  ): Promise<Rating> {
     const orderDetail = await this.orderDetailRepo.findOne({
       where: { Rating: { ID: ratingId } },
       relations: [
@@ -106,17 +138,16 @@ export class RatingService {
         'Order.AccountDelivery.Account',
       ],
     });
-    if (!orderDetail)
-      throw new NotFoundException('Không tìm thấy chi tiết đánh giá');
 
-    if (orderDetail.Order.AccountDelivery.Account.ID !== userId)
-      throw new ForbiddenException('Bạn không có quyền sửa đánh giá này');
+    if (
+      !orderDetail ||
+      orderDetail.Order.AccountDelivery.Account.ID !== userId
+    ) {
+      throw new ForbiddenException('Không có quyền');
+    }
 
     const can = await this.canRate(orderDetail.ID, userId);
-    if (!can)
-      throw new BadRequestException(
-        'Đơn hàng không còn trong thời gian được chỉnh sửa đánh giá',
-      );
+    if (!can) throw new BadRequestException('Hết hạn chỉnh sửa');
 
     const rating = await this.ratingRepo.findOne({ where: { ID: ratingId } });
     if (!rating) throw new NotFoundException('Không tìm thấy đánh giá');
@@ -126,41 +157,47 @@ export class RatingService {
 
     const updated = await this.ratingRepo.save(rating);
 
-    if (dto.ImagePaths) {
-      if (dto.ImagePaths) {
-        const currentImages = await this.imageRepo.find({
-          where: {
-            object_ID: ratingId,
-            object_type: 'rating',
-          },
-        });
+    // --- Xử lý ảnh ---
+    const currentImages = await this.imageRepo.find({
+      where: { object_ID: ratingId, object_type: 'rating' },
+    });
 
-        const currentPaths = currentImages.map((img) => img.ImagePath);
-        const newPaths = dto.ImagePaths;
+    const frontendImagePaths = dto.ImagePaths || [];
 
-        // Ảnh cần xóa: ảnh cũ không còn trong danh sách mới
-        const toDelete = currentImages.filter(
-          (img) => !newPaths.includes(img.ImagePath),
-        );
+    // Tìm các ảnh cần xoá (có trong DB nhưng không còn trong frontend gửi lên)
+    const imagesToDelete = currentImages.filter(
+      (img) => !frontendImagePaths.includes(img.ImagePath),
+    );
 
-        // Ảnh cần thêm: ảnh mới chưa tồn tại trong danh sách cũ
-        const toAdd = newPaths.filter((path) => !currentPaths.includes(path));
+    for (const img of imagesToDelete) {
+      await this.s3Service.deleteFileFromS3(img.ImagePath);
+    }
 
-        if (toDelete.length > 0) {
-          await this.imageRepo.remove(toDelete);
-        }
+    await this.imageRepo.remove(imagesToDelete);
 
-        if (toAdd.length > 0) {
-          const newImages = toAdd.map((path) =>
+    // Tạo các ảnh mới (chỉ thêm nếu ảnh chưa có)
+    const newImageEntities: Image[] = [];
+
+    if (imageFiles && imageFiles.length > 0) {
+      const uploadPromises = imageFiles.map((f) =>
+        this.s3Service.uploadFile(f.buffer, f.originalname, 'ratings'),
+      );
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      for (const url of uploadedUrls) {
+        if (!frontendImagePaths.includes(url)) {
+          newImageEntities.push(
             this.imageRepo.create({
               object_ID: ratingId,
               object_type: 'rating',
-              ImagePath: path,
+              ImagePath: url,
             }),
           );
-          await this.imageRepo.save(newImages);
         }
       }
+
+      await this.imageRepo.save(newImageEntities);
     }
 
     return updated;

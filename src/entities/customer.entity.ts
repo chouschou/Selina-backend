@@ -12,23 +12,23 @@ export class Customer {
   @PrimaryGeneratedColumn()
   ID: number;
 
-  @Column()
+  @Column({ nullable: true })
   Email: string;
 
-  @Column()
+  @Column({ nullable: true })
   Name: string;
 
-  @Column()
+  @Column({ nullable: true })
   Gender: string;
 
-  @Column()
+  @Column({ nullable: true })
   PhoneNumber: string;
 
-  @Column('date')
+  @Column({ nullable: true, type: 'date' })
   DateOfBirth: Date;
 
-  @Column({ nullable: true })
-  Avatar: string;
+  @Column({ nullable: true, type: 'varchar' })
+  Avatar!: string | null;
 
   @OneToOne(() => Account, (account) => account.Customer)
   @JoinColumn({ name: 'Account_ID' })

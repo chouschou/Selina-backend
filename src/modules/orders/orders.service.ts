@@ -247,6 +247,7 @@ export class OrdersService {
         'OrderDetails',
         'OrderDetails.GlassColor.Glass',
         'OrderDetails.GlassColor',
+        'OrderDetails.Rating',
         'OrderStatuses',
         'OrderStatuses.Refund',
       ],

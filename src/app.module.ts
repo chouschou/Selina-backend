@@ -22,6 +22,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
 import { GeocodeModule } from './modules/geocode/geocode.module';
 import { ConfigModule } from '@nestjs/config';
 import { VnpayModule } from './modules/vnpay/vnpay.module';
+import { AccountModule } from './modules/account/account.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { VnpayModule } from './modules/vnpay/vnpay.module';
     StatisticsModule,
     GeocodeModule,
     VnpayModule,
+    AccountModule,
   ],
 })
 export class AppModule {}

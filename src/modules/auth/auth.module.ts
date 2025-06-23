@@ -6,6 +6,11 @@ import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from '../auth/local.strategy';
 import { JwtStrategy } from '../auth/jwt.strategy';
 import { AccountModule } from '../account/account.module';
+import { MailService } from '../email/mail.service';
+import { OtpService } from '../email/otp.service';
+import { Account } from 'src/entities/account.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RoleModule } from '../role/role.module';
 
 @Module({
   imports: [
@@ -15,8 +20,10 @@ import { AccountModule } from '../account/account.module';
       signOptions: { expiresIn: '1h' }, // Thời gian hết hạn access token
     }),
     AccountModule,
+    RoleModule,
+    TypeOrmModule.forFeature([Account]),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy, MailService, OtpService],
   controllers: [AuthController],
   exports: [AuthService],
 })

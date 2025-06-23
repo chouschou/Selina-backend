@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -6,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { Account } from 'src/entities/account.entity';
 import { CreateAccountDto } from 'src/DTO/auth/create-account.dto';
 import { Role } from 'src/entities/role.entity';
@@ -15,6 +16,9 @@ import {
   ChangeEmployeePasswordDto,
   ChangeOwnPasswordDto,
 } from 'src/DTO/auth/change-password.dto';
+import { Customer } from 'src/entities/customer.entity';
+import { S3Service } from 'src/shared/s3.service';
+import { UpdateCustomerDto } from 'src/DTO/customer/update-info-customer';
 
 @Injectable()
 export class AccountService {
@@ -23,7 +27,104 @@ export class AccountService {
     private accountRepo: Repository<Account>,
     @InjectRepository(Role)
     private roleRepo: Repository<Role>,
+    @InjectRepository(Customer)
+    private customerRepo: Repository<Customer>,
+    private readonly s3Service: S3Service,
   ) {}
+
+  async createCustomerInfo(
+    accountId: number,
+    dto: UpdateCustomerDto,
+    avatarFile?: Express.Multer.File,
+  ): Promise<Customer> {
+    const account = await this.accountRepo.findOne({
+      where: { ID: accountId },
+      relations: ['Customer'],
+    });
+
+    if (!account) {
+      throw new NotFoundException('Không tìm thấy tài khoản.');
+    }
+
+    if (account.Customer) {
+      throw new BadRequestException('Tài khoản đã có thông tin khách hàng.');
+    }
+
+    let avatarUrl: string | null = null;
+
+    if (avatarFile) {
+      avatarUrl = await this.s3Service.uploadFile(
+        avatarFile.buffer,
+        avatarFile.originalname,
+        'avatars',
+      );
+    }
+
+    const customerData: DeepPartial<Customer> = {
+      Email: account.Username,
+      Name: dto.name,
+      PhoneNumber: dto.phoneNumber,
+      Gender: dto.gender,
+      DateOfBirth: dto.dateOfBirth !== undefined && new Date(dto.dateOfBirth),
+      Avatar: avatarUrl,
+      Account: account,
+    };
+
+    const newCustomer = this.customerRepo.create(customerData);
+    return this.customerRepo.save(newCustomer);
+  }
+
+  async updateCustomerInfo(
+    accountId: number,
+    dto: UpdateCustomerDto,
+    avatarFile?: Express.Multer.File,
+  ): Promise<Customer> {
+    const account = await this.accountRepo.findOne({
+      where: { ID: accountId },
+      relations: ['Customer'],
+    });
+
+    if (!account || !account.Customer) {
+      throw new NotFoundException('Không tìm thấy tài khoản hoặc khách hàng.');
+    }
+
+    const customer = account.Customer;
+
+    // Cập nhật các field thông thường
+    if (dto.name !== undefined) customer.Name = dto.name;
+    if (dto.phoneNumber !== undefined) customer.PhoneNumber = dto.phoneNumber;
+    if (dto.gender !== undefined) customer.Gender = dto.gender;
+    if (dto.dateOfBirth !== undefined) {
+      customer.DateOfBirth = new Date(dto.dateOfBirth);
+    }
+
+    // --- Xử lý avatar mới (nếu có) ---
+    if (avatarFile) {
+      const oldUrl = customer.Avatar || null;
+      const newUrl = await this.s3Service.uploadFile(
+        avatarFile.buffer,
+        avatarFile.originalname,
+        'avatars',
+      );
+
+      // Xoá ảnh cũ nếu có và khác ảnh mới
+      if (oldUrl && oldUrl !== newUrl) {
+        await this.s3Service.deleteFileFromS3(oldUrl);
+      }
+
+      customer.Avatar = newUrl;
+    } else if (
+      dto.avatar !== undefined &&
+      dto.avatar.trim() === '' &&
+      customer.Avatar
+    ) {
+      // Nếu frontend gửi chuỗi rỗng → yêu cầu xoá avatar
+      await this.s3Service.deleteFileFromS3(customer.Avatar);
+      customer.Avatar = null;
+    }
+
+    return this.customerRepo.save(customer);
+  }
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
     const existing = await this.accountRepo.findOne({

@@ -1,10 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import * as bcrypt from 'bcryptjs';
 import { Account } from '../../entities/account.entity';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { CreateAccountDto } from 'src/DTO/auth/create-account.dto';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { RoleService } from '../role/role.service';
 
 type SafeAccount = Omit<Account, 'Password'>;
 
@@ -18,6 +25,9 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private accountService: AccountService,
+    private roleService: RoleService,
+    @InjectRepository(Account)
+    private readonly accountRepository: Repository<Account>,
   ) {}
 
   async validateUser(
@@ -58,8 +68,19 @@ export class AuthService {
     return { user, access_token, refresh_token };
   }
 
-  async register(createAccountDto: CreateAccountDto): Promise<Account> {
-    return this.accountService.create(createAccountDto);
+  async create(dto: CreateAccountDto): Promise<Account> {
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(dto.Password, salt);
+
+    const role = await this.roleService.findOne(dto.Role_ID); // lấy Role entity
+
+    const account = this.accountRepository.create({
+      Username: dto.Username,
+      Password: hashedPassword,
+      Role: role, // gán object Role, không phải ID
+    });
+
+    return this.accountRepository.save(account);
   }
 
   // Refresh token
@@ -95,5 +116,35 @@ export class AuthService {
 
   async findById(id: number): Promise<Account | null> {
     return this.accountService.findOne(id);
+  }
+
+  async generateResetToken(email: string): Promise<string> {
+    const account = await this.accountRepository.findOneBy({ Username: email });
+    if (!account) throw new NotFoundException('Email này chưa đăng ký.');
+
+    const payload = { sub: account.ID, username: account.Username };
+    const token = await this.jwtService.signAsync(payload, {
+      expiresIn: '5m',
+    });
+    return token;
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      const decoded = await this.jwtService.verifyAsync(token);
+      const account = await this.accountRepository.findOneBy({
+        ID: decoded.sub,
+      });
+
+      if (!account) {
+        throw new NotFoundException('Không tìm thấy tài khoản.');
+      }
+
+      const hashed = await bcrypt.hash(newPassword, await bcrypt.genSalt());
+      account.Password = hashed;
+      await this.accountRepository.save(account);
+    } catch (err) {
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    }
   }
 }

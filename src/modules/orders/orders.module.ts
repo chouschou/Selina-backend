@@ -10,6 +10,7 @@ import { OrderStatus } from 'src/entities/order_status.entity';
 import { OrderRefund } from 'src/entities/order_refund.entity';
 import { VnpayService } from '../vnpay/vnpay.service';
 import { GlassColor } from 'src/entities/glass_color.entity';
+import { Rating } from 'src/entities/rating.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { GlassColor } from 'src/entities/glass_color.entity';
       OrderStatus,
       OrderRefund,
       GlassColor,
+      Rating,
     ]),
     AccountDeliveryModule,
     AuthModule,

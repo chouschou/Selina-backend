@@ -5,6 +5,7 @@ import { GlassColor } from 'src/entities/glass_color.entity';
 import { Glass } from 'src/entities/glass.entity';
 import { CreateGlassColorDto } from 'src/DTO/glass-color/create-glass-color.dto';
 import { UpdateGlassColorDto } from 'src/DTO/glass-color/update-glass-color';
+import { ImageService } from '../image/image.service';
 
 @Injectable()
 export class GlassColorService {
@@ -13,7 +14,34 @@ export class GlassColorService {
     private readonly colorRepo: Repository<GlassColor>,
     @InjectRepository(Glass)
     private readonly glassRepo: Repository<Glass>,
+    private readonly imageService: ImageService,
   ) {}
+  async attachImagesToGlassColors(
+    glassColors: GlassColor[],
+  ): Promise<GlassColor[]> {
+    const colorIDs = glassColors.map((c) => c.ID);
+
+    const images = await this.imageService.findImagesForObjects(
+      'glass_color',
+      colorIDs,
+    );
+
+    const imageMap = new Map<number, string[]>();
+
+    for (const img of images) {
+      if (!imageMap.has(img.object_ID)) {
+        imageMap.set(img.object_ID, []);
+      }
+      imageMap.get(img.object_ID)!.push(img.ImagePath);
+    }
+
+    for (const glassColor of glassColors) {
+      // Thêm field Images nếu chưa có
+      (glassColor as any).Images = imageMap.get(glassColor.ID) || [];
+    }
+
+    return glassColors;
+  }
 
   async findAll(): Promise<GlassColor[]> {
     return this.colorRepo.find({ relations: ['Glass'] });
@@ -25,7 +53,9 @@ export class GlassColorService {
       relations: ['Glass'],
     });
     if (!color) throw new NotFoundException('GlassColor not found');
-    return color;
+
+    const [result] = await this.attachImagesToGlassColors([color]);
+    return result;
   }
 
   async create(dto: CreateGlassColorDto): Promise<GlassColor> {

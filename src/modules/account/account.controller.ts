@@ -8,6 +8,10 @@ import {
   ForbiddenException,
   Req,
   Patch,
+  Put,
+  UseInterceptors,
+  ParseIntPipe,
+  UploadedFile,
 } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from 'src/DTO/auth/create-account.dto';
@@ -20,10 +24,46 @@ import {
   ChangeEmployeePasswordDto,
   ChangeOwnPasswordDto,
 } from 'src/DTO/auth/change-password.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateCustomerDto } from 'src/DTO/customer/update-info-customer';
 
 @Controller('accounts')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
+
+  @Post(':id/customer')
+  @UseInterceptors(FileInterceptor('avatar'))
+  async createCustomerInfo(
+    @Param('id') id: number,
+    @Body() body: UpdateCustomerDto,
+    @UploadedFile() avatarFile?: Express.Multer.File,
+  ) {
+    const customer = await this.accountService.createCustomerInfo(
+      id,
+      body,
+      avatarFile,
+    );
+    return { message: 'Tạo thông tin khách hàng thành công', customer };
+  }
+
+  @Patch(':id/customer')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'employee', 'customer')
+  @UseInterceptors(FileInterceptor('avatar'))
+  async updateCustomerProfile(
+    @Param('id') id: number,
+    @Body() body: UpdateCustomerDto,
+    @UploadedFile() avatarFile?: Express.Multer.File,
+  ) {
+    const customer = await this.accountService.updateCustomerInfo(
+      id,
+      body,
+      avatarFile,
+    );
+    console.log('body', body);
+    console.log('avatarFile', avatarFile);
+    return { message: 'Cập nhật thành công', customer };
+  }
 
   @Post()
   create(@Body() createAccountDto: CreateAccountDto) {
