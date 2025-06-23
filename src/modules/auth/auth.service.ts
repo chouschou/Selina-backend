@@ -12,8 +12,12 @@ import { CreateAccountDto } from 'src/DTO/auth/create-account.dto';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RoleService } from '../role/role.service';
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { Role } from 'src/entities/role.entity';
+import { Customer } from 'src/entities/customer.entity';
 
 type SafeAccount = Omit<Account, 'Password'>;
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 interface JwtPayload {
   username: string;
@@ -22,13 +26,32 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private oauth2Client: OAuth2Client;
+
   constructor(
     private jwtService: JwtService,
     private accountService: AccountService,
     private roleService: RoleService,
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
-  ) {}
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
+    @InjectRepository(Role) private readonly roleRepository: Repository<Role>,
+  ) {
+    console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
+
+    this.oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.FRONTEND_URL}/`,
+    );
+
+    console.log('OAuth2 client initialized:', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: `${process.env.FRONTEND_URL}/`,
+    });
+  }
 
   async validateUser(
     username: string,
@@ -146,5 +169,82 @@ export class AuthService {
     } catch (err) {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }
+  }
+
+  async verifyGoogleToken(token: string): Promise<TokenPayload> {
+    const ticket = await this.oauth2Client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      throw new UnauthorizedException('Token không hợp lệ');
+    }
+
+    return payload;
+  }
+
+  async loginGoogle(idToken: string) {
+    const ticket = await this.oauth2Client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException(
+        'Thông tin tài khoản Google không hợp lệ',
+      );
+    }
+
+    const { email, name, picture } = payload;
+
+    let account = await this.accountRepository.findOneBy({ Username: email });
+
+    if (!account) {
+      const defaultRole = await this.roleRepository.findOneBy({ ID: 1 });
+      if (!defaultRole)
+        throw new NotFoundException('Role mặc định không tồn tại');
+
+      // --- Tạo Account ---
+      account = this.accountRepository.create({
+        Username: email,
+        Password: '',
+        Role: defaultRole,
+      });
+      await this.accountRepository.save(account);
+
+      // --- Tạo Customer ---
+      const customer = this.customerRepository.create({
+        Email: email,
+        Name: name,
+        Avatar: picture,
+        Account: account,
+      });
+      await this.customerRepository.save(customer);
+    }
+
+    // Payload để tạo JWT
+    const jwtPayload = {
+      username: account.Username,
+      sub: account.ID,
+      role: account.Role?.Name,
+    };
+
+    const accessToken = await this.jwtService.signAsync(jwtPayload, {
+      expiresIn: '15m',
+    });
+
+    const refreshToken = await this.jwtService.signAsync(jwtPayload, {
+      expiresIn: '7d',
+    });
+
+    return {
+      message: 'Đăng nhập bằng Google thành công',
+      accessToken,
+      refreshToken,
+      account,
+    };
   }
 }

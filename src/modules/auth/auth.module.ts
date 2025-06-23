@@ -11,6 +11,11 @@ import { OtpService } from '../email/otp.service';
 import { Account } from 'src/entities/account.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RoleModule } from '../role/role.module';
+import { GoogleStrategy } from '../google/google.strategy';
+import { Role } from 'src/entities/role.entity';
+import * as dotenv from 'dotenv';
+import { Customer } from 'src/entities/customer.entity';
+dotenv.config();
 
 @Module({
   imports: [
@@ -21,9 +26,16 @@ import { RoleModule } from '../role/role.module';
     }),
     AccountModule,
     RoleModule,
-    TypeOrmModule.forFeature([Account]),
+    TypeOrmModule.forFeature([Account, Role, Customer]),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy, MailService, OtpService],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    MailService,
+    OtpService,
+    GoogleStrategy,
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })

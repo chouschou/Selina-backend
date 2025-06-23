@@ -4,6 +4,7 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from '../../DTO/auth/login.dto';
@@ -83,5 +84,14 @@ export class AuthController {
   @Post('reset-password')
   async resetPassword(@Body() body: { token: string; password: string }) {
     return this.authService.resetPassword(body.token, body.password);
+  }
+
+  @Post('google-login')
+  async googleLogin(@Body('token') idToken: string) {
+    if (!idToken) {
+      throw new BadRequestException('Thiếu Google token!');
+    }
+    console.log('Google ID Token:', idToken.slice(0, 20), '...');
+    return this.authService.loginGoogle(idToken);
   }
 }

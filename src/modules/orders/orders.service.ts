@@ -78,28 +78,31 @@ export class OrdersService {
       );
     }
 
-    // 2. Kiểm tra tồn kho trước khi tạo đơn
-    for (const detail of OrderDetails) {
-      const glassColor = await this.glassColorRepo.findOne({
-        where: { ID: detail.GlassColorId },
-      });
-
-      if (!glassColor) {
-        throw new NotFoundException(
-          `Sản phẩm GlassColor ID ${detail.GlassColorId} không tồn tại.`,
-        );
-      }
-
-      if (glassColor.Quantity < detail.Quantity) {
-        throw new BadRequestException(
-          `Sản phẩm GlassColor ID ${detail.GlassColorId} không đủ số lượng (hiện còn ${glassColor.Quantity}).`,
-        );
-      }
-    }
-
-    // 3. Bắt đầu transaction
+    // 2. Bắt đầu transaction
     return await this.orderRepo.manager.transaction(async (manager) => {
-      // 3.1. Tạo đơn hàng
+      // 2.1. Kiểm tra tồn kho có khóa ghi
+      for (const detail of OrderDetails) {
+        const glassColor = await manager
+          .getRepository(GlassColor)
+          .createQueryBuilder('glassColor')
+          .setLock('pessimistic_write') // Khoá ghi để ngăn request khác, pessimistic_write → sẽ lock row đó lại cho đến khi transaction kết thúc, không ai khác có thể sửa Quantity cùng lúc.
+          .where('glassColor.ID = :id', { id: detail.GlassColorId })
+          .getOne();
+
+        if (!glassColor) {
+          throw new NotFoundException(
+            `Sản phẩm GlassColor ID ${detail.GlassColorId} không tồn tại.`,
+          );
+        }
+
+        if (glassColor.Quantity < detail.Quantity) {
+          throw new BadRequestException(
+            `Sản phẩm GlassColor ID ${detail.GlassColorId} không đủ số lượng (hiện còn ${glassColor.Quantity}).`,
+          );
+        }
+      }
+
+      // 2.2. Tạo đơn hàng
       const order = this.orderRepo.create({
         AccountDelivery: accountDelivery,
         Total,
@@ -109,7 +112,7 @@ export class OrdersService {
       });
       const savedOrder = await manager.save(order);
 
-      // 3.2. Tạo chi tiết đơn hàng
+      // 2.3. Tạo chi tiết đơn hàng
       const details = OrderDetails.map((detail) =>
         this.orderDetailRepo.create({
           Order: savedOrder,
@@ -121,7 +124,7 @@ export class OrdersService {
       );
       await manager.save(details);
 
-      // 3.3. Trừ số lượng tồn kho của GlassColor
+      // 2.4. Trừ tồn kho
       for (const detail of OrderDetails) {
         await manager.decrement(
           GlassColor,
@@ -131,7 +134,7 @@ export class OrdersService {
         );
       }
 
-      // 3.4. Tạo OrderStatus
+      // 2.5. Tạo trạng thái đơn hàng
       const orderStatus = this.orderStatusRepo.create({
         Order: { ID: savedOrder.ID },
         TransactionCode: TransactionCode ?? undefined,
@@ -140,7 +143,7 @@ export class OrdersService {
       });
       await manager.save(orderStatus);
 
-      // 3.5. Đánh dấu voucher đã sử dụng (nếu có)
+      // 2.6. Đánh dấu voucher đã dùng (nếu có)
       if (AccountVoucherId) {
         await manager.update(AccountVoucher, AccountVoucherId, {
           Status: true,
