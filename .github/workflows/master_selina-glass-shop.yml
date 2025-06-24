@@ -29,10 +29,15 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      - name: Prepare deploy folder
+      # - name: Prepare deploy folder
+      #   run: |
+      #     mkdir deploy-ready
+      #     cp -r dist package.json package-lock.json .env* deploy-ready
+      - name: Prepare for deploy
         run: |
           mkdir deploy-ready
-          cp -r dist package.json package-lock.json .env* deploy-ready
+          cp -r dist node_modules package.json deploy-ready/
+
 
 
       # - name: Zip artifact for deployment
